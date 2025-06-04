@@ -3,9 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const serverless = require("serverless-http");
 
-// Import routes and configs - adjust paths assuming index.js is at project root
 const authRouter = require("../routes/authRouter");
 const orderRouter = require("../routes/orderRouter");
 const poolRouter = require("../routes/poolRouter");
@@ -16,7 +14,7 @@ const { job } = require("../services/scheduleService");
 
 const app = express();
 
-// CORS configuration
+// CORS config
 const corsOptions = {
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
@@ -26,7 +24,7 @@ app.use(cors(corsOptions));
 // Middleware
 app.use(bodyParser.json());
 
-// Health check endpoint
+// Health check
 app.get("/", (req, res) => {
   res.status(200).json({
     status: "healthy",
@@ -41,21 +39,20 @@ app.use("/api", poolRouter);
 app.use("/api", poolProcessingRouter);
 app.use("/api", poolResultsRouter);
 
-// Error handler
+// Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send("Something broke!");
 });
 
-// Connect to DB (with simple caching to avoid multiple connects on serverless cold starts)
+// MongoDB connection (only once)
 let isDbConnected = false;
-
 const setup = async () => {
   if (!isDbConnected) {
     try {
       await connectToDatabase();
       console.log("Database connected successfully");
-      job(); // optional background job
+      job();
       isDbConnected = true;
     } catch (error) {
       console.error("Database connection failed:", error);
@@ -63,7 +60,8 @@ const setup = async () => {
   }
 };
 
-setup();
-
-// Export handler for Vercel serverless function
-module.exports.handler = serverless(app);
+// Wrap Express app in handler for Vercel
+module.exports = async (req, res) => {
+  await setup();         // Make sure DB is connected before handling
+  app(req, res);         // Pass request to Express
+};
