@@ -5,13 +5,14 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const serverless = require("serverless-http");
 
-const authRouter = require("../routes/authRouter");
-const orderRouter = require("../routes/orderRouter");
-const poolRouter = require("../routes/poolRouter");
-const poolProcessingRouter = require("../routes/poolProcessingRouter");
-const poolResultsRouter = require("../routes/poolResultsRouter");
-const connectToDatabase = require("../configs/db");
-const { job } = require("../services/scheduleService");
+// Import routes and configs - adjust paths assuming index.js is at project root
+const authRouter = require("./routes/authRouter");
+const orderRouter = require("./routes/orderRouter");
+const poolRouter = require("./routes/poolRouter");
+const poolProcessingRouter = require("./routes/poolProcessingRouter");
+const poolResultsRouter = require("./routes/poolResultsRouter");
+const connectToDatabase = require("./configs/db");
+const { job } = require("./services/scheduleService");
 
 const app = express();
 
@@ -46,18 +47,23 @@ app.use((err, req, res, next) => {
   res.status(500).send("Something broke!");
 });
 
-// Connect to DB (only once per cold start)
+// Connect to DB (with simple caching to avoid multiple connects on serverless cold starts)
+let isDbConnected = false;
+
 const setup = async () => {
-  try {
-    await connectToDatabase();
-    console.log("Database connected successfully");
-    job(); // optional: background job
-  } catch (error) {
-    console.error("Database connection failed:", error);
+  if (!isDbConnected) {
+    try {
+      await connectToDatabase();
+      console.log("Database connected successfully");
+      job(); // optional background job
+      isDbConnected = true;
+    } catch (error) {
+      console.error("Database connection failed:", error);
+    }
   }
 };
 
 setup();
 
-// Export as serverless function
-module.exports = serverless(app);
+// Export handler for Vercel serverless function
+module.exports.handler = serverless(app);
