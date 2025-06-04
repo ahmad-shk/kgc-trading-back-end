@@ -6,13 +6,13 @@ const cors = require("cors");
 const serverless = require("serverless-http");
 
 // Import routes and configs - adjust paths assuming index.js is at project root
-const authRouter = require("./routes/authRouter");
-const orderRouter = require("./routes/orderRouter");
-const poolRouter = require("./routes/poolRouter");
-const poolProcessingRouter = require("./routes/poolProcessingRouter");
-const poolResultsRouter = require("./routes/poolResultsRouter");
-const connectToDatabase = require("./configs/db");
-const { job } = require("./services/scheduleService");
+const authRouter = require("../routes/authRouter");
+const orderRouter = require("../routes/orderRouter");
+const poolRouter = require("../routes/poolRouter");
+const poolProcessingRouter = require("../routes/poolProcessingRouter");
+const poolResultsRouter = require("../routes/poolResultsRouter");
+const connectToDatabase = require("../configs/db");
+const { job } = require("../services/scheduleService");
 
 const app = express();
 
