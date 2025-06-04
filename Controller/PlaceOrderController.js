@@ -1,15 +1,65 @@
 
 const PlaceOrder = require("../models/PlaceOrder");
-
+const Pool = require("../models/Pool");
 const { logger } = require("../logger");
+const { superAdminWalletAddress } = require("../config");
+
+// create a order
+exports.placeOrder = async (req, res) => {
+    const { symbol, amount, unit, order_type, leverage, transactionHash } = req.body;
+    const { walletAddress, _id: user_id } = req.user;
+    const timestamps = Date.now();
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getMinutes() % 5, 0, 0); // Round down to nearest 5 min and zero seconds/milliseconds
+    const start_timestamps = now.getTime();
+    const process_timestamps = start_timestamps + 1 * 5 * 60 * 1000; // 5 minutes later
+    const end_timestamps = start_timestamps + 1 * 10 * 60 * 1000; // 5 minutes later
+    const status = "PENDING";
+    const payload = { walletAddress, user_id, symbol, transactionHash, amount, unit, order_type, timestamps, leverage, status }
+    // console.log("Payload: ", payload);
+
+    try {
+        const order = new PlaceOrder(payload);
+        await order.save();
+        // find the pool by symbol and update it
+        const pool = await Pool.findOne({ symbol, status: "OPEN" });
+        if (pool) {
+            // Update the pool with the new order
+            pool.orders.push(order._id);
+            pool.total_amount += amount;
+            await pool.save();
+        } else {
+            // If no open pool found, create a new one
+            const newPool = new Pool({
+                orders: [order._id],
+                symbol,
+                total_amount: amount,
+                unit,
+                pool_type: order_type,
+                start_timestamps,
+                process_timestamps,
+                end_timestamps,
+                leverage,
+                status: "OPEN",
+                createdBy: superAdminWalletAddress
+            });
+            // Save the new pool
+            await newPool.save();
+        }
+        res.status(201).json({ message: "Order created successfully" });
+    } catch (err) {
+        logger.error("Error creating order: ", err);
+        res.status(500).json({ message: "Error creating order" });
+    }
+}
 
 // create a order
 exports.createOrder = async (req, res) => {
-    const { symbol, amount, unit, order_type, leverage } = req.body;
+    const { symbol, amount, unit, order_type, leverage, transactionHash } = req.body;
     const { walletAddress, _id: user_id } = req.user;
     const timestamps = Date.now();
-    const status = "pending";
-    const payload = { walletAddress, user_id, symbol, amount, unit, order_type, timestamps, leverage, status }
+    const status = "PENDING";
+    const payload = { walletAddress, user_id, symbol, transactionHash, amount, unit, order_type, timestamps, leverage, status }
     // console.log("Payload: ", payload);
     try {
         const order = new PlaceOrder(payload);

@@ -5,10 +5,12 @@ const router = express.Router();
 router.use(bodyParser.urlencoded({ extended: false }));
 router.use(bodyParser.json());
 
-const { createOrder, getOrders, getOrderById, updateOrder, deleteOrder } = require("../Controller/PlaceOrderController");
+const { placeOrder, createOrder, getOrders, getOrderById, updateOrder, deleteOrder } = require("../Controller/PlaceOrderController");
 const authMiddleware = require("../middleware/authMiddelware");
 
 router.use(authMiddleware);
+router.route("/place_order")
+    .post(placeOrder)
 
 router.route("/order")
     .post(createOrder)

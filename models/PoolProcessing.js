@@ -7,16 +7,14 @@ const PoolProcessingSchema = new mongoose.Schema({
     random_start_range: { type: Number, required: true },
     random_end_range: { type: Number, required: true },
     ranges: {
-        type: [[Number]],
-        required: true,
-        validate: {
-            validator: function (arr) {
-                return arr.every(
-                    pair => Array.isArray(pair) && pair.length === 2 && pair.every(num => typeof num === 'number')
-                );
-            },
-            message: props => `${props.value} is not a valid array of [start, end] pairs.`
-        }
+        type: [{
+            start: { type: Number, required: true },
+            end: { type: Number, required: true },
+            leverage: { type: Number, required: true },
+            orderId: { type: String, required: true }
+            // orderId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Order' }
+        }],
+        required: true
     },
     total_users: { type: Number, required: true },
     createdBy: { type: String, required: true },

@@ -38,6 +38,7 @@ router.route("/pool-results-byUser")
 // get pool results by pool id
 router.route("/pool-results-byPoolId/:pool_id")
     .get(getPoolResultsByPoolId);
+    
 // get pool results by pool processing id
 router.route("/pool-results-bypPoolId/:pPoolId")
     .get(getPoolResultsByPoolProcessingId);
