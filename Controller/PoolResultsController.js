@@ -29,7 +29,6 @@ exports.getPoolResults = async (req, res) => {
     if (createdBy != superAdminWalletAddress) {
         return res.status(403).json({ message: "You do not have permission to get pool results" });
     }
-    if (!pool_id) return res.status(400).json({ message: "Pool ID is required" });
     try {
         const poolResults = await PoolResults.find({ createdBy });
         if (!poolResults || poolResults.length === 0)

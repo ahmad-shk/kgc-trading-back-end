@@ -13,7 +13,7 @@ const PoolResultsSchema = new mongoose.Schema({
     isClaimed: { type: Boolean, default: false },
     expiry_time: { type: Number, required: true },
     isExpired: { type: Boolean, default: false },
-    status: { type: String, enum: ["IDLE", "LOSER", "WINNER"], default: "IDLE", required: true },
+    status: { type: String, enum: ["IDLE", "LOSER", "WINNER","DRAW"], default: "IDLE", required: true },
     createdBy: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
