@@ -264,7 +264,7 @@ const poolResultsProcessing = async () => {
                             });
                             await poolResult.save();
                             // Update the loser order status to LOSER
-                            await PlaceOrder.findByIdAndUpdate(loserOrder._id, { status: "DRAW" });
+                            await PlaceOrder.findByIdAndUpdate(drawOrder._id, { status: "DRAW" });
                         }
             }
             // Update the range status to CLOSED
