@@ -1,9 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 
-const { TokenbalanceOf, GetName, GetTotalSupply,
-        GetDecimals, GetSymbol, GetAllowance
-    } = require("../Controller/TokenController");
+const { USDT, paymentReceiver, FundTransfer, totalEnteries } = require("../Controller/TokenController");
 
 const router = express.Router();
 router.use(bodyParser.urlencoded({ extended: false }));
@@ -14,12 +12,8 @@ const authMiddleware = require("../middleware/authMiddelware");
 router.use(authMiddleware);
 // Middleware to parse JSON data
 
-
-router.route("/TokenbalanceOf/:walletAddress").get(TokenbalanceOf)
-router.route("/GetName").get(GetName)
-router.route("/GetTotalSupply").get(GetTotalSupply)
-router.route("/GetDecimals").get(GetDecimals)
-router.route("/GetSymbol").get(GetSymbol)
-router.route("/GetAllowance/:owner/:spender").get(GetAllowance)
-
+router.route("/TokenbalanceOf/:walletAddress").get(USDT)
+router.route("/FundTransfer/:walletAddress").get(FundTransfer)
+router.route("/paymentReceiver/:walletAddress").get(paymentReceiver)
+router.route("/totalEnteries").get(totalEnteries)
 module.exports = router;

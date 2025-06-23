@@ -4,8 +4,9 @@ const Pool = require("../models/Pool");
 const PoolProcessing = require("../models/PoolProcessing");
 const PoolResults = require("../models/PoolResults");
 const { logger } = require("../logger");
-const {generateKey} = require("../utils/helper");
+const { generateKey } = require("../utils/helper");
 const { superAdminWalletAddress, botAddressList } = require("../config");
+const { fundTransfer } = require('../Controller/TokenController');
 
 const poolProcessing = async () => {
     try {
@@ -51,6 +52,11 @@ const poolProcessing = async () => {
                     await botOrder.save();
                     ranges.push({ start: 1, end: 1, leverage: botOrder.leverage * botOrder.amount, orderId: botOrder._id });
 
+                    // Update the pool with the new order
+                    pool.orders.push(botOrder._id);
+                    pool.total_amount += amount;
+                    await pool.save();
+
                     const processingPool = new PoolProcessing({
                         pool_id: poolId,
                         symbol,
@@ -62,7 +68,6 @@ const poolProcessing = async () => {
                         createdBy: superAdminWalletAddress,
                     });
                     await processingPool.save();
-                    await Pool.findByIdAndUpdate(poolId, { ordersCount: 2 });
                 } else if (orderslist.length > 1) {
                     console.log(`Processing pool count ${orderslist.length} for pool ${poolId}...`);
                     let ordersList = orderslist
@@ -154,7 +159,7 @@ const poolResultsProcessing = async () => {
                 console.log(`No processing pool found for pool ${pool._id}. Skipping.`);
                 continue;
             }
-            const {_id:pool_porcessing_id, pool_id, ranges } = processingPool[0];
+            const { _id: pool_porcessing_id, pool_id, ranges } = processingPool[0];
             console.log(`Processing pool results for pool ${pool_id}...`);
             console.log(`Processing pool ranges: ${JSON.stringify(processingPool)}`);
             // const pool = await Pool.findById(pool_id);
@@ -202,6 +207,12 @@ const poolResultsProcessing = async () => {
                     // Update the winner order status to WINNER
                     await PlaceOrder.findByIdAndUpdate(winnerOrder._id, { status: "WINNER" });
                     console.log(`Pool ${pool_id} processed successfully. Winner is order ${winnerOrder._id}.`);
+                    try {
+                        await fundTransfer(winnerOrder.walletAddress, winnerOrder.amount + profit_loss)
+                    } catch (err) {
+                        console.error(`Error transferring funds to winner order ${winnerOrder._id}: `, err);
+                    }
+
                 } else
                     if (range.start == 0) {
                         // This is a losing range
@@ -234,6 +245,13 @@ const poolResultsProcessing = async () => {
                         await poolResult.save();
                         // Update the loser order status to LOSER
                         await PlaceOrder.findByIdAndUpdate(loserOrder._id, { status: "LOSER" });
+                        console.log(`Pool ${pool_id} processed successfully. loserOrder is order ${loserOrder._id}.`);
+                        try {
+                            await fundTransfer(loserOrder.walletAddress, loserOrder.amount - profit_loss)
+                        } catch (err) {
+                            console.error(`Error transferring funds to loserOrder order ${loserOrder._id}: `, err);
+                        }
+
                     } else
                         if (range.start == 0.5) {
                             // This is a losing range
@@ -264,7 +282,14 @@ const poolResultsProcessing = async () => {
                             });
                             await poolResult.save();
                             // Update the loser order status to LOSER
-                            await PlaceOrder.findByIdAndUpdate(loserOrder._id, { status: "DRAW" });
+                            await PlaceOrder.findByIdAndUpdate(drawOrder._id, { status: "DRAW" });
+                            console.log(`Pool ${pool_id} processed successfully. drawOrder is order ${drawOrder._id}.`);
+                            try {
+                                await fundTransfer(drawOrder.walletAddress, drawOrder.amount)
+                            } catch (err) {
+                                console.error(`Error transferring funds to drawOrder order ${drawOrder._id}: `, err);
+                            }
+
                         }
             }
             // Update the range status to CLOSED

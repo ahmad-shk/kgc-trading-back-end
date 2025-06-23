@@ -3,11 +3,34 @@ const PlaceOrder = require("../models/PlaceOrder");
 const Pool = require("../models/Pool");
 const { logger } = require("../logger");
 const { superAdminWalletAddress } = require("../config");
-
+const { getTransactionDetails } = require("./TokenController");
 // create a order
 exports.placeOrder = async (req, res) => {
     const { symbol, amount, unit, order_type, leverage, transactionHash } = req.body;
     const { walletAddress, _id: user_id } = req.user;
+    // Validate required transactionHash verification with web3.js or ethers.js
+    if (!transactionHash) {
+        return res.status(400).json({ message: "Transaction hash is required" });
+    } else {
+        try {
+            const transactionDetails = await getTransactionDetails(transactionHash);
+            console.log("Transaction Details: ", transactionDetails);
+
+            if (!transactionDetails || transactionDetails.from.toLowerCase() !== walletAddress.toLowerCase()) {
+                return res.status(400).json({ message: "Invalid transaction hash or wallet address mismatch" });
+            }
+
+            const expectedValue = numeral(amount).format('0.0000');
+            if (transactionDetails.value !== expectedValue || transactionDetails.unit !== unit) {
+                return res.status(400).json({ message: "Transaction amount or unit mismatch" });
+            }
+            // proceed with further processing
+        } catch (err) {
+            console.error("Error verifying transaction:", err.message);
+            return res.status(500).json({ message: "Server error during transaction verification" });
+        }
+    }
+
     const timestamps = Date.now();
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getMinutes() % 5, 0, 0); // Round down to nearest 5 min and zero seconds/milliseconds
