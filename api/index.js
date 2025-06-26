@@ -11,7 +11,9 @@ const poolProcessingRouter = require("../routes/poolProcessingRouter");
 const poolResultsRouter = require("../routes/poolResultsRouter");
 const tokenRouter = require("../routes/tokenRouter");
 const connectToDatabase = require("../configs/db");
+
 const { job } = require("../services/scheduleService");
+const { logger } = require("../logger");
 
 const app = express();
 
@@ -54,15 +56,17 @@ const setup = async () => {
     try {
       await connectToDatabase();
       console.log("Database connected successfully");
+      logger.info("Database connected successfully");
       job();
       isDbConnected = true;
     } catch (error) {
       console.error("Database connection failed:", error);
+      logger.error("Database connection failed:", error);
     }
   }
 };
 
-// // Wrap Express app in handler for Vercel
+// Wrap Express app in handler for Vercel
 // module.exports = async (req, res) => {
 //   await setup();         // Make sure DB is connected before handling
 //   app(req, res);         // Pass request to Express
