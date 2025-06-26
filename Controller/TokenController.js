@@ -7,7 +7,7 @@ const { logger } = require("../logger");
 // const { CONSTANTS } = require("../constants");
 
 const contractABI = require("../contractABI/TokenContractABI.json");
-const { RPC_URL, TOKEN_CONTRACT_ADDRESS: contractAddress } = require("../config");
+const { RPC_URL, TOKEN_CONTRACT_ADDRESS: contractAddress, superAdminWalletPrivateKey } = require("../config");
 
 const  smart_contract = {
     isAtive: true,
@@ -48,9 +48,94 @@ const getContractInstance = (web3) => {
     return new web3.eth.Contract(smart_contract.contractABI, smart_contract.contractAddress);
 };
 
+
+// Validate transaction hash
+const validateTransactionHash = (hash) => {
+     if (typeof hash !== 'string') return false;
+    hash = hash.trim();
+    const web3 = initializeWeb3();   
+    return web3.utils.isHexStrict(hash) && hash.length === 66;
+};
+
+const fundTransfer = async ( walletAddress, amount) => {
+    // const { walletAddress, amount=10 } = req.body;
+    logger.log("walletAddress", walletAddress, "amount", amount);
+    const web3 = initializeWeb3();
+    // Derived sender account
+    const senderAccount = web3.eth.accounts.privateKeyToAccount(superAdminWalletPrivateKey);
+    web3.eth.accounts.wallet.add(senderAccount);
+    if (!validateAddress(walletAddress)) {
+         throw new Error("Invalid wallet address");    
+    }
+    if (!amount || isNaN(amount) || amount <= 0) {  
+         throw new Error("Invalid amount")
+    }
+    try {
+        const contract = getContractInstance(web3);
+        // const amountInWei = web3.utils.toWei(numeral(amount).format('0.0000'), 'ether'); // Convert to wei
+         try {
+            const nonce = await web3.eth.getTransactionCount(senderAccount.address, 'latest');
+            const gasPrice = await web3.eth.getGasPrice();
+            const tx = {
+            from: senderAccount.address,
+            to: walletAddress,
+            value: web3.utils.toWei(`${amount}`, 'mwei'), // Convert to wei
+            gas: 21000,
+            gasPrice,
+            nonce,
+            };
+            logger.log("Transaction details:", tx);
+            // Sign and send
+            const signedTx = await web3.eth.accounts.signTransaction(tx, superAdminWalletPrivateKey);
+            const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+            logger.log("Transaction successful with hash:", receipt);
+            return receipt;
+        } catch (error) {
+            logger.error("Error during transaction:", error);
+             throw new Error(error.message || "An error occurred during the fund transfer");
+        }
+    } catch (error) {
+            throw new Error(error.message || "An error occurred during the fund transfer");
+        }    
+}
+
 exports.validateAddress = validateAddress;
+exports.fundTransfer = fundTransfer;
+
+exports.getTransactionDetails = async (hash) => {
+     const web3 = initializeWeb3();
+    if (!validateTransactionHash(hash)) {        
+        throw new Error("Invalid transaction hash");
+    }
+    const transaction = await web3.eth.getTransaction(hash);
+    if (!transaction) {
+        throw new Error("Transaction not found");
+    }
+    return {
+        from: transaction.from,
+        to: transaction.to, 
+        value: numeral(web3.utils.fromWei(transaction.value.toString())).format('0.0000'),
+        gas: transaction.gas,
+        gasPrice: numeral(web3.utils.fromWei(transaction.gasPrice.toString())).format('0.0000'),
+        blockNumber: transaction.blockNumber,
+        transactionHash: transaction.hash,
+    };
+};
+
+exports.FundTransfer = async (req, res) => {
+    const { walletAddress, amount=21.345 } = req.params;
+    if (!validateAddress(walletAddress)) {
+        return res.json({ error: true, message: "Invalid wallet address" });
+    }
+    try {
+       const receipt =  await fundTransfer(walletAddress, amount);
+        res.json({ error: false, message: "Transfer successful", receipt});
+    } catch (error) {
+        return res.json({ error: true, message: error.message });
+    }
+    }
 // Controller methods
-exports.TokenbalanceOf = async (req, res) => {
+exports.USDT = async (req, res) => {
     const web3 = initializeWeb3();
     const { walletAddress } = req.params;
 
@@ -60,7 +145,8 @@ exports.TokenbalanceOf = async (req, res) => {
 
     try {
         const contract = getContractInstance(web3);
-        const balance = await contract.methods.balanceOf(walletAddress).call();
+        const balance = await contract.methods.USDT(walletAddress).call();
+        console.log("balance", balance);
         const data = numeral(web3.utils.fromWei(balance.toString())).format('0.0000');
         res.json({ error: false, data });
     } catch (error) {
@@ -68,182 +154,29 @@ exports.TokenbalanceOf = async (req, res) => {
     }
 };
 
-exports.GetName = async (req, res) => {
+exports.paymentReceiver = async (req, res) => {
+    const { walletAddress } = req.params;
+
+    if (!validateAddress(walletAddress)) {
+        return res.json({ error: true, message: "Invalid wallet address" });
+    }
     try {
         const web3 = initializeWeb3();
         const contract = getContractInstance(web3);
-        const name = await contract.methods.name().call();
+        const name = await contract.methods.paymentReceiver(walletAddress).call();
         res.json({ error: false, name });
     } catch (error) {
         res.json({ error: true, message: error.message });
     }
 };
 
-exports.GetTotalSupply = async (req, res) => {
+exports.totalEnteries = async (req, res) => {
     try {
         const web3 = initializeWeb3();
         const contract = getContractInstance(web3);
-        const totalSupply = await contract.methods.totalSupply().call();
-        res.json({ error: false, totalSupply: numeral(totalSupply).format("0.00a") });
+        const totalEnteries = await contract.methods.totalEnteries().call();
+        res.json({ error: false, totalEnteries: numeral(totalEnteries).format("0.00a") });
     } catch (error) {
         res.json({ error: true, message: error.message });
     }
 };
-
-exports.GetDecimals = async (req, res) => {
-    try {
-        const web3 = initializeWeb3();
-        const contract = getContractInstance(web3);
-        const decimals = await contract.methods.decimals().call();
-        res.json({ error: false, decimals });
-    } catch (error) {
-        res.json({ error: true, message: error.message });
-    }
-};
-
-exports.GetSymbol = async (req, res) => {
-    try {
-        const web3 = initializeWeb3();
-        const contract = getContractInstance(web3);
-        const symbol = await contract.methods.symbol().call();
-        res.json({ error: false, symbol });
-    } catch (error) {
-        res.json({ error: true, message: error.message });
-    }
-};
-
-exports.GetAllowance = async (req, res) => {
-    const { owner, spender } = req.params;
-
-    if (!validateAddress(owner) || !validateAddress(spender)) {
-        return res.json({ error: true, message: "Invalid owner or spender address" });
-    }
-
-    try {
-        const web3 = initializeWeb3();
-        const contract = getContractInstance(web3);
-        const allowance = await contract.methods.allowance(owner, spender).call();
-        res.json({ error: false, allowance: numeral(allowance).format("0.00a") });
-    } catch (error) {
-        res.json({ error: true, message: error.message });
-    }
-};
-
-// require("dotenv").config();
-// const Web3 = require("web3");
-// const numeral = require('numeral');
-// numeral.locale('en');
-// const contractABI =require('../contractABI/TokenContractABI.json')
-
-// const RPC_URL = process.env.RPC_URL
-// const contractAddress =process.env.TOKEN_CONTRACT_ADDRESS
-// // TokenbalanceOf controller method: balanceOf
-// exports.TokenbalanceOf = async (request, response) => {
-//     // const _web3 = new Web3.providers.HttpProvider(RPC_URL)
-//     const web3 = new Web3(RPC_URL);
-//     const { walletAddress } = request.params;
-//     console.log(walletAddress, "addresswallet");
-//     // check if wallet address is valid
-//     if (!web3.utils.isAddress(walletAddress)) {
-//         return response.json({ error: true, message: "Invalid wallet address" });
-//     }
-//     // check if token address is valid
-//     if (!web3.utils.isAddress(contractAddress)) {
-//         return response.json({ error: true, message: "Invalid token address" });
-//     }
-//     // check if contract ABI is valid
-//     if (!contractABI) {
-//         return response.json({ error: true, message: "Invalid contract ABI" });
-//     }
-//     try {
-//         const contract = new web3.eth.Contract(contractABI, contractAddress);
-//         const balance = await contract.methods.balanceOf(walletAddress).call();
-//         console.log("balancecheck", balance);
-//         response.json({ error: false, balance: numeral(balance).format("0.00a") });
-//     }
-//     catch (error) {
-//         response.json({ error: true, message: error.message });
-//     }
-// }
-// // GetName controller method: name
-// exports.GetName = async (request, response) => {
-//     const web3 = new Web3(RPC_URL);    
-//     if (!web3.utils.isAddress(contractAddress) || !contractABI) {
-//         return response.json({ error: true, message: "Invalid token address or ABI json" });
-//     }
-    
-//     try {
-//         const contract = new web3.eth.Contract(contractABI, contractAddress);
-//         const name = await contract.methods.name().call();
-//         console.log("name", name);
-//         response.json({ error: false, name: name });
-//     }
-//     catch (error) {
-//         response.json({ error: true, message: error.message });
-//     }
-// }
-// // GetTotalSupply controller method: totalSupply
-// exports.GetTotalSupply = async (request, response) => {
-//     const web3 = new Web3(RPC_URL);
-//     if (!web3.utils.isAddress(contractAddress) || !contractABI) {
-//         return response.json({ error: true, message: "Invalid token address or ABI json" });
-//     }
-//     try {
-//         const contract = new web3.eth.Contract(contractABI, contractAddress);
-//         const totalSupply = await contract.methods.totalSupply().call();
-//         console.log("totalSupply", numeral(totalSupply).format('0.00a'), typeof totalSupply);
-//         response.json({ error: false, totalSupply: numeral(totalSupply).format('0.00a') });
-//     }
-//     catch (error) {
-//         response.json({ error: true, message: error.message });
-//     }
-// }
-// // GetDecimals controller method: decimals
-// exports.GetDecimals = async (request, response) => {
-//     const web3 = new Web3(RPC_URL);
-//     if (!web3.utils.isAddress(contractAddress) || !contractABI) {
-//         return response.json({ error: true, message: "Invalid token address or ABI json" });
-//     }
-//     try {
-//         const contract = new web3.eth.Contract(contractABI, contractAddress);
-//         const decimals = await contract.methods.decimals().call();
-//         console.log("decimals", decimals);
-//         response.json({ error: false, decimals: decimals });
-//     }
-//     catch (error) {
-//         response.json({ error: true, message: error.message });
-//     }
-// }
-// // GetSymbol controller method: symbol
-// exports.GetSymbol = async (request, response) => {
-//     const web3 = new Web3(RPC_URL);
-//     if (!web3.utils.isAddress(contractAddress) || !contractABI) {
-//         return response.json({ error: true, message: "Invalid token address or ABI json" });
-//     }
-//     try {
-//         const contract = new web3.eth.Contract(contractABI, contractAddress);
-//         const symbol = await contract.methods.symbol().call();
-//         console.log("symbol", symbol);
-//         response.json({ error: false, symbol: symbol });
-//     }
-//     catch (error) {
-//         response.json({ error: true, message: error.message });
-//     }
-// }
-// // GetAllowance controller method: allowance
-// exports.GetAllowance = async (request, response) => {
-//     const web3 = new Web3(RPC_URL);
-//     const { owner, spender } = request.params;
-//     if (!web3.utils.isAddress(owner) || !web3.utils.isAddress(spender) || !web3.utils.isAddress(contractAddress) || !contractABI) {
-//         return response.json({ error: true, message: "Invalid owner, spender, token address or ABI json" });
-//     }
-//     try {
-//         const contract = new web3.eth.Contract(contractABI, contractAddress);
-//         const allowance = await contract.methods.allowance(owner, spender).call();
-//         console.log("allowance", allowance);
-//         response.json({ error: false, allowance: numeral(allowance).format('0.00a') });
-//     }
-//     catch (error) {
-//         response.json({ error: true, message: error.message });
-//     }
-// }

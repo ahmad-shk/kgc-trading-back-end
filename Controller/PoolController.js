@@ -116,7 +116,7 @@ exports.getAllPools = async (req, res) => {
                 }
             }
         ]);
-        if (!pools || pools.length === 0) return res.status(404).json({ message: "No pools found" });
+        if (!pools || pools.length === 0) return res.status(200).json({ pools:[] });
         // Return only the necessary fields
         res.status(200).json({ pools });
     } catch (err) {

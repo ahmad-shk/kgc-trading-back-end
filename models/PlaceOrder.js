@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 
 const PlaceOrderSchema = new mongoose.Schema({
-    walletAddress: { type: String, required: true, unique: true  },
-    transactionHash: { type: String, required: true },
+    walletAddress: { type: String, required: true },
+    transactionHash: { type: String, required: true, unique: true },
     user_id: { type: String, required: true },
     symbol: { type: String, required: true },
     amount: { type: Number, required: true },
