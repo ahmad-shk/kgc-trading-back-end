@@ -13,43 +13,32 @@ const poolProcessing = async () => {
         const pools = await Pool.find({ status: "OPEN" });
         if (pools.length === 0) {
             console.log("No open pools found.");
+            logger.info("No open pools found.");
             return;
         }
         for (const pool of pools) {
             const { _id: poolId, orders, symbol,
                 //  end_timestamps, process_timestamps 
-                } = pool;
+            } = pool;
             // const currentTime = Date.now();
-            
+
             if (orders.length === 0) {
                 // console.log(`Pool ${poolId} has no orders, skipping processing.`);
-                logger.log({
-                    "level": "info",
-                    "message": `Pool ${poolId} has no orders, skipping processing.`
-                })
+                logger.info(`Pool ${poolId} has no orders, skipping processing.`)
                 await Pool.findByIdAndUpdate(poolId, { status: "CLOSED" });
-                logger.log({
-                    "level": "info",
-                    "message": `Pool ${poolId} has been closed due to no orders.`
-                })
+                logger.info(`Pool ${poolId} has been closed due to no orders.`)
                 // console.log(`Pool ${poolId} has been closed due to no orders.`);
                 continue;
             }
             // if (currentTime >= process_timestamps && currentTime <= end_timestamps) {
             // Process the pool
             // console.log(`Processing pool ${poolId}...`);
-            logger.log({
-                "level": "info",
-                "message": `Processing pool ${poolId}...`
-            })
+            logger.info(`Processing pool ${poolId}...`)
             const ranges = [];
             const orderslist = await PlaceOrder.find({ _id: { $in: orders } });
             if (orderslist.length === 1) {
                 // console.log(`Processing pool count ${orderslist.length} for pool ${poolId}...`);
-                logger.log({
-                    "level": "info",
-                    "message": `Processing pool count ${orderslist.length} for pool ${poolId}...`
-                })
+                logger.info(`Processing pool count ${orderslist.length} for pool ${poolId}...`)
                 const order = orderslist[0];
                 ranges.push({ start: 0, end: 0, leverage: order.leverage * order.amount, orderId: order._id });
                 const randomNum = Math.floor(Math.random() * 4)
@@ -89,17 +78,11 @@ const poolProcessing = async () => {
                 await processingPool.save();
             } else if (orderslist.length > 1) {
                 // console.log(`Processing pool count ${orderslist.length} for pool ${poolId}...`);
-                logger.log({
-                    "level": "info",
-                    "message": `Processing pool count ${orderslist.length} for pool ${poolId}...`
-                })
+                logger.info(`Processing pool count ${orderslist.length} for pool ${poolId}...`)
                 let ordersList = orderslist
                 if (orderslist.length % 2 === 1) {
                     // console.log(`Pool ${poolId} has an odd number of orders, splitting the last order...`);
-                    logger.log({
-                        "level": "info",
-                        "message": `Pool ${poolId} has an odd number of orders, splitting the last order...`
-                    })
+                    logger.info(`Pool ${poolId} has an odd number of orders, splitting the last order...`)
                     // we need to split the orders into two parts sort by createAt and last order spilt and others array
                     const sortbyCreatedAt = orderslist.sort((a, b) => a.createdAt - b.createdAt);
                     const lastOrder = sortbyCreatedAt.pop(); // remove the last order
@@ -143,18 +126,9 @@ const poolProcessing = async () => {
                 // console.log(`Pool ${poolId} has been split into two halves for processing.`);
                 // console.log(`Total ranges firstHalf: ${firstHalf}`);
                 // console.log(`Total ranges secondHalf: ${secondHalf}`);
-                logger.log({
-                    "level": "info",
-                    "message": `Pool ${poolId} has been split into two halves for processing.`
-                })
-                logger.log({
-                    "level": "info",
-                    "message": `Total ranges firstHalf: ${JSON.stringify(firstHalf)}`
-                })
-                logger.log({
-                    "level": "info",
-                    "message": `Total ranges secondHalf: ${JSON.stringify(secondHalf)}`
-                })
+                logger.info(`Pool ${poolId} has been split into two halves for processing.`)
+                logger.info(`Total ranges firstHalf: ${JSON.stringify(firstHalf)}`)
+                logger.info(`Total ranges secondHalf: ${JSON.stringify(secondHalf)}`)
 
                 const processingPool = new PoolProcessing({
                     pool_id: poolId,
@@ -187,16 +161,10 @@ const poolResultsProcessing = async () => {
         const pools = await Pool.find({ status: "PROCESSING" });
         // const pools = await Pool.find({ status: "PROCESSING" }).populate("orders");
         // console.log(`Found ${pools.length} processing pools.`);
-        logger.log({
-            "level": "info",
-            "message": `Found ${pools.length} processing pools.`
-        });
+        logger.info(`Found ${pools.length} processing pools.`);
         if (pools.length === 0) {
             console.log("No processing pools found.");
-            logger.log({
-                "level": "info",
-                "message": "No processing pools found."
-            });
+            logger.info("No processing pools found.");
             return;
         }
 
@@ -204,41 +172,21 @@ const poolResultsProcessing = async () => {
             const processingPool = await PoolProcessing.find({ pool_id: pool._id });
             if (processingPool.length === 0) {
                 // console.log(`No processing pool found for pool ${pool._id}. Skipping.`);
-                logger.log({
-                    "level": "info",
-                    "message": `No processing pool found for pool ${pool._id}. Skipping.`
-                });
+                logger.info(`No processing pool found for pool ${pool._id}. Skipping.`);
                 continue;
             }
             const { _id: pool_porcessing_id, pool_id, ranges } = processingPool[0];
             // console.log(`Processing pool results for pool ${pool_id}...`);
             // console.log(`Processing pool ranges: ${JSON.stringify(processingPool)}`);
-            logger.log({
-                "level": "info",
-                "message": `Processing pool results for pool ${pool_id}...`
-            });
-            logger.log({
-                "level": "info",
-                "message": `Processing pool ranges: ${JSON.stringify(processingPool)}`
-            });
-            // const pool = await Pool.findById(pool_id);
-            // if (!pool) {
-            //     console.log(`Pool ${pool_id} not found.`);
-            //     continue;
-            // }
+            logger.info(`Processing pool results for pool ${pool_id}...`);
+            logger.info(`Processing pool ranges: ${JSON.stringify(processingPool)}`);
+            
             if (ranges && ranges.length === 0) {
                 // console.log(`No ranges found for pool ${pool_id}. Skipping processing.`);
-                logger.log({
-                    "level": "info",
-                    "message": `No ranges found for pool ${pool_id}. Skipping processing.`
-                });
+                logger.info(`No ranges found for pool ${pool_id}. Skipping processing.`);
                 await pool.updateOne({ status: "CLOSED" });
-                // await PoolProcessing.findByIdAndUpdate(processingPool._id, { status: "CLOSED" });
                 // console.log(`Pool ${pool_id} has been closed due to no ranges.`);
-                logger.log({
-                    "level": "info",
-                    "message": `Pool ${pool_id} has been closed due to no ranges.`
-                });
+                logger.info(`Pool ${pool_id} has been closed due to no ranges.`);
                 continue;
             }
             for (const range of ranges) {
@@ -247,10 +195,7 @@ const poolResultsProcessing = async () => {
                     const winnerOrder = await PlaceOrder.findById(range.orderId);
                     if (!winnerOrder) {
                         // console.log(`Winner order ${winnerRange.orderId} not found for pool ${pool_id}.`);
-                        logger.log({
-                            "level": "info",
-                            "message": `Winner order ${range.orderId} not found for pool ${pool_id}.`
-                        });
+                        logger.info(`Winner order ${range.orderId} not found for pool ${pool_id}.`);
                         continue;
                     }
                     const leverage = winnerOrder.leverage || 0; // Default to 0 if leverage is not set
@@ -258,10 +203,7 @@ const poolResultsProcessing = async () => {
                     const profit_loss = winnerOrder.amount * leverage / 100; // Example profit/loss calculation
                     // Create a new PoolResults document
                     // console.log(`Winner order found: ${winnerOrder._id} for pool ${pool_id}. ${pool_porcessing_id}`);
-                    logger.log({
-                        "level": "info",
-                        "message": `Winner order found: ${winnerOrder._id} for pool ${pool_id}. ${pool_porcessing_id}`
-                    });
+                    logger.info(`Winner order found: ${winnerOrder._id} for pool ${pool_id}. ${pool_porcessing_id}`);
                     const poolResult = new PoolResults({
                         pool_id,
                         pool_porcessing_id,
@@ -278,44 +220,32 @@ const poolResultsProcessing = async () => {
                         status: "WINNER",
                         createdBy: superAdminWalletAddress,
                     });
-                    await poolResult.save();
+
                     // Update the winner order status to WINNER
                     await PlaceOrder.findByIdAndUpdate(winnerOrder._id, { status: "WINNER" });
                     // console.log(`Pool ${pool_id} processed successfully. Winner is order ${winnerOrder._id}.`);
-                    logger.log({
-                        "level": "info",
-                        "message": `Pool ${pool_id} processed successfully. Winner is order ${winnerOrder._id}.`
-                    });
+                    logger.info(`Pool ${pool_id} processed successfully. Winner is order ${winnerOrder._id}.`);
                     try {
                         if (range.end == 1) {
-                            await PoolResults.findByIdAndUpdate(poolResult._id, {
-                                transactionHash: generateKey(),
-                                isClaimed: false,
-                                isExpired: true,
-                            });
+                            poolResult.transactionHash = generateKey();
+                            poolResult.isClaimed = false;
+                            poolResult.isExpired = true;
                             // console.log(`Funds transferred to winner order ${winnerOrder._id}: `);
-                            logger.log({
-                                "level": "info",
-                                "message": `Funds transferred to winner order ${winnerOrder._id}: `
-                            });
+                            logger.info(`Funds transferred to winner order ${winnerOrder._id}: `);
                         } else {
                             const receipt = await fundTransfer(winnerOrder.walletAddress, winnerOrder.amount + profit_loss)
-                            await PoolResults.findByIdAndUpdate(poolResult._id, {
-                                transactionHash: receipt.transactionHash,
-                                isClaimed: false,
-                                isExpired: true,
-                            });
+                            poolResult.transactionHash = receipt.transactionHash;
+                            poolResult.isClaimed = false;
+                            poolResult.isExpired = true;
                             // console.log(`Funds transferred to winner order ${winnerOrder._id}: `, receipt);
-                            logger.log({
-                                "level": "info",
-                                "message": `Funds transferred to winner order ${winnerOrder._id}: ${JSON.stringify(receipt)}`
-                            });
+                            logger.info(`Funds transferred to winner order ${winnerOrder._id}: ${JSON.stringify(receipt)}`)
                         }
 
                     } catch (err) {
                         // console.error(`Error transferring funds to winner order ${winnerOrder._id}: `, err);
                         logger.error(`Error transferring funds to winner order ${winnerOrder._id}: `, err);
                     }
+                    await poolResult.save();
 
                 } else
                     if (range.start == 0) {
@@ -323,20 +253,14 @@ const poolResultsProcessing = async () => {
                         const loserOrder = await PlaceOrder.findById(range.orderId);
                         if (!loserOrder) {
                             // console.log(`Loser order ${range.orderId} not found for pool ${pool_id}.`);
-                            logger.log({
-                                "level": "info",
-                                "message": `Loser order ${range.orderId} not found for pool ${pool_id}.`
-                            });
+                            logger.info(`Loser order ${range.orderId} not found for pool ${pool_id}.`);
                             continue;
                         }
                         const leverage = loserOrder.leverage || 0; // Default to 0 if leverage is not set
                         const expiry_time = Date.now() + 24 * 60 * 60 * 1000; // Example expiry time set to 24 hours later
                         const profit_loss = -1 * loserOrder.amount * leverage / 100; // Example profit/loss calculation for losers
                         // console.log(`Loser order found: ${loserOrder._id} for pool ${pool_id}. ${pool_porcessing_id}`);
-                        logger.log({
-                            "level": "info",
-                            "message": `Loser order found: ${loserOrder._id} for pool ${pool_id}. ${pool_porcessing_id}`
-                        });
+                        logger.info(`Loser order found: ${loserOrder._id} for pool ${pool_id}. ${pool_porcessing_id}`);
                         // Create a new PoolResults document for losers
                         const poolResult = new PoolResults({
                             pool_id,
@@ -354,30 +278,23 @@ const poolResultsProcessing = async () => {
                             status: "LOSER",
                             createdBy: superAdminWalletAddress,
                         });
-                        await poolResult.save();
+
                         // Update the loser order status to LOSER
                         await PlaceOrder.findByIdAndUpdate(loserOrder._id, { status: "LOSER" });
                         // console.log(`Pool ${pool_id} processed successfully. loserOrder is order ${loserOrder._id}.`);
-                        logger.log({
-                            "level": "info",
-                            "message": `Pool ${pool_id} processed successfully. loserOrder is order ${loserOrder._id}.`
-                        });
+                        logger.info(`Pool ${pool_id} processed successfully. loserOrder is order ${loserOrder._id}.`);
                         try {
                             const receipt = await fundTransfer(loserOrder.walletAddress, loserOrder.amount + profit_loss)
-                            await PoolResults.findByIdAndUpdate(poolResult._id, {
-                                transactionHash: receipt.transactionHash,
-                                isClaimed: false,
-                                isExpired: true,
-                            });
+                            poolResult.transactionHash = receipt.transactionHash;
+                            poolResult.isClaimed = false;
+                            poolResult.isExpired = true;
                             // console.log(`Funds transferred to loserOrder order ${loserOrder._id}: `, receipt);
-                            logger.log({
-                                "level": "info",
-                                "message": `Funds transferred to loserOrder order ${loserOrder._id}: ${JSON.stringify(receipt)}`
-                            });
+                            logger.info(`Funds transferred to loserOrder order ${loserOrder._id}: ${JSON.stringify(receipt)}`);
                         } catch (err) {
                             // console.error(`Error transferring funds to loserOrder order ${loserOrder._id}: `, err);
                             logger.error(`Error transferring funds to loserOrder order ${loserOrder._id}: `, err);
                         }
+                        await poolResult.save();
 
                     } else
                         if (range.start == 0.5) {
@@ -385,19 +302,14 @@ const poolResultsProcessing = async () => {
                             const drawOrder = await PlaceOrder.findById(range.orderId);
                             if (!drawOrder) {
                                 // console.log(`Loser order ${range.orderId} not found for pool ${pool_id}.`);
-                                logger.log({
-                                    "level": "info",
-                                    "message": `Loser order ${range.orderId} not found for pool ${pool_id}.`
-                                });
+                                logger.info(`Loser order ${range.orderId} not found for pool ${pool_id}.`);
                                 continue;
                             }
                             const expiry_time = Date.now() + 24 * 60 * 60 * 1000; // Example expiry time set to 24 hours later
                             const profit_loss = 0 // Example profit/loss calculation for losers
                             // console.log(`Draw order found: ${drawOrder._id} for pool ${pool_id}. ${pool_porcessing_id}`);
-                            logger.log({
-                                "level": "info",
-                                "message": `Draw order found: ${drawOrder._id} for pool ${pool_id}. ${pool_porcessing_id}`
-                            });
+                            logger.info(`Draw order found: ${drawOrder._id} for pool ${pool_id}. ${pool_porcessing_id}`);
+
                             // Create a new PoolResults document for losers
                             const poolResult = new PoolResults({
                                 pool_id,
@@ -415,35 +327,26 @@ const poolResultsProcessing = async () => {
                                 status: "DRAW",
                                 createdBy: superAdminWalletAddress,
                             });
-                            await poolResult.save();
+
                             // Update the loser order status to LOSER
                             await PlaceOrder.findByIdAndUpdate(drawOrder._id, { status: "DRAW" });
                             // console.log(`Pool ${pool_id} processed successfully. drawOrder is order ${drawOrder._id}.`);
-                            logger.log({
-                                "level": "info",
-                                "message": `Pool ${pool_id} processed successfully. drawOrder is order ${drawOrder._id}.`
-                            });
+                            logger.info(`Pool ${pool_id} processed successfully. drawOrder is order ${drawOrder._id}.`);
                             try {
                                 const receipt = await fundTransfer(drawOrder.walletAddress, drawOrder.amount)
-                                await PoolResults.findByIdAndUpdate(poolResult._id, {
-                                    transactionHash: receipt.transactionHash,
-                                    isClaimed: false,
-                                    isExpired: true,
-                                });
+
+                                poolResult.transactionHash = receipt.transactionHash;
+                                poolResult.isClaimed = false;
+                                poolResult.isExpired = true;
                                 // console.log(`Funds transferred to drawOrder order ${drawOrder._id}: `, receipt);
-                                logger.log({
-                                    "level": "info",
-                                    "message": `Funds transferred to drawOrder order ${drawOrder._id}: ${JSON.stringify(receipt)}`
-                                });
+                                logger.info(`Funds transferred to drawOrder order ${drawOrder._id}: ${JSON.stringify(receipt)}`);
                             } catch (err) {
                                 // console.error(`Error transferring funds to drawOrder order ${drawOrder._id}: `, err);
                                 logger.error(`Error transferring funds to drawOrder order ${drawOrder._id}: `, err);
                             }
-
+                            await poolResult.save();
                         }
-            }
-            // Update the range status to CLOSED
-            // await PoolProcessing.findByIdAndUpdate(processingPool._id, { status: "CLOSED" });
+            }           
             // Update the pool status to CLOSED
             await Pool.findByIdAndUpdate(pool_id, { status: "CLOSED" });
         }
@@ -454,10 +357,7 @@ const poolResultsProcessing = async () => {
 
 const job = schedule.scheduleJob(' */5 * * * *', async (fireDate) => {
     console.log('This job was supposed to run at ' + fireDate + ', but actually ran at ' + new Date());
-    logger.log({
-        "level": "info",
-        "message": `This job was supposed to run at ${fireDate}, but actually ran at ${new Date()}`
-    });
+    logger.info(`This job was supposed to run at ${fireDate}, but actually ran at ${new Date()}`);
     // Here you can call your processing function or any other logic you want to execute every 5 minutes
     // poolResultsProcessing()
     //     .then(() => console.log("All processing pools results processed successfully."))
