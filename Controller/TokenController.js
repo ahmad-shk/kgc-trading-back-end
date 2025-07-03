@@ -8,7 +8,28 @@ const { logger } = require("../logger");
 
 const contractABI = require("../contractABI/TokenContractABI.json");
 const { RPC_URL, TOKEN_CONTRACT_ADDRESS: contractAddress, superAdminWalletPrivateKey } = require("../config");
+// const DECIMALS_ABI = {
+//   constant: true,
+//   inputs: [],
+//   name: "decimals",
+//   outputs: [{ name: "", type: "uint8" }],
+//   stateMutability: "view",
+//   type: "function",
+// };
+// const transferMethodABI = {
+//   "constant": false,
+//   "inputs": [
+//     { "name": "recipient", "type": "address" },
+//     { "name": "amount", "type": "uint256" }
+//   ],
+//   "name": "transfer",
+//   "outputs": [{ "name": "", "type": "bool" }],
+//   "type": "function",
+//   "stateMutability": "nonpayable"
+// };
 
+// Combine with existing ABI:
+// const fullABI = [...contractABI, transferMethodABI];
 const smart_contract = {
     isAtive: true,
     contractName: 'Token',
@@ -67,9 +88,17 @@ const toTokenUnits = (amount, decimals, web3) => {
         throw new Error("Invalid token amount");
     }
 
-    return web3.utils.toBN(amount).mul(
-        web3.utils.toBN(10).pow(web3.utils.toBN(decimals))
-    );
+    // Convert amount to smallest unit (as a string, avoiding float issues)
+    const multiplier = web3.utils.toBN(10).pow(web3.utils.toBN(decimals));
+
+    // Convert amount to string, handle decimals manually
+    const [whole, fraction = ""] = amount.toString().split(".");
+    const paddedFraction = (fraction + "0".repeat(decimals)).slice(0, decimals);
+
+    const wholeBN = web3.utils.toBN(whole).mul(multiplier);
+    const fractionBN = web3.utils.toBN(paddedFraction);
+
+    return wholeBN.add(fractionBN);
 
 };
 const fromTokenUnits = (amountInSmallestUnit, decimals, web3) => {
@@ -80,6 +109,60 @@ const fromTokenUnits = (amountInSmallestUnit, decimals, web3) => {
     const divisor = web3.utils.toBN(10).pow(web3.utils.toBN(decimals));
     const humanReadable = web3.utils.toBN(amountInSmallestUnit).div(divisor);
     return humanReadable.toString();
+};
+
+const fundTransfer = async (walletAddress, amount) => {
+    logger.log("walletAddress", walletAddress, "amount", amount);
+    const web3 = initializeWeb3();
+
+    // Validate input
+    if (!validateAddress(walletAddress)) {
+        throw new Error("Invalid wallet address");
+    }
+
+
+    // Prepare sender account
+    const senderAccount = web3.eth.accounts.privateKeyToAccount(superAdminWalletPrivateKey);
+    web3.eth.accounts.wallet.add(senderAccount);
+
+    try {
+        const contract = getContractInstance(web3);
+
+
+        // Get token decimals
+        const decimals = await contract.methods.decimals().call();
+        // const decimals = 6; 
+        const amountInSmallestUnit = toTokenUnits(amount, decimals, web3);
+        logger.log("Amount in smallest unit:", amountInSmallestUnit.toString());
+        const humanReadableAmount = fromTokenUnits(amountInSmallestUnit, decimals, web3);
+        logger.log("Human readable amount:", humanReadableAmount);
+        // Build transaction
+        const data = contract.methods.transfer(walletAddress, amountInSmallestUnit.toString()).encodeABI();
+        const nonce = await web3.eth.getTransactionCount(senderAccount.address, 'latest');
+        const gasPrice = await web3.eth.getGasPrice();
+
+        const tx = {
+            from: senderAccount.address,
+            to: smart_contract.contractAddress,
+            data: data,
+            gas: 100000, // Estimate or adjust as needed
+            gasPrice: gasPrice,
+            nonce: nonce,
+            chainId: smart_contract.chainId, // Optional if using RPC that implies network
+        };
+
+        logger.log("Transaction details:", tx);
+
+        // Sign and send
+        const signedTx = await web3.eth.accounts.signTransaction(tx, superAdminWalletPrivateKey);
+        const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+
+        logger.log("Transaction successful with hash:", receipt.transactionHash);
+        return receipt;
+    } catch (error) {
+        logger.error("Error during transaction:", error);
+        throw new Error(error.message || "An error occurred during the USD token transfer");
+    }
 };
 
 // Function to transfer funds
@@ -124,57 +207,6 @@ const fromTokenUnits = (amountInSmallestUnit, decimals, web3) => {
 //             throw new Error(error.message || "An error occurred during the fund transfer");
 //         }    
 // }
-const fundTransfer = async (walletAddress, amount) => {
-    logger.log("walletAddress", walletAddress, "amount", amount);
-    const web3 = initializeWeb3();
-
-    // Validate input
-    if (!validateAddress(walletAddress)) {
-        throw new Error("Invalid wallet address");
-    }
-
-
-    // Prepare sender account
-    const senderAccount = web3.eth.accounts.privateKeyToAccount(superAdminWalletPrivateKey);
-    web3.eth.accounts.wallet.add(senderAccount);
-
-    try {
-        const contract = getContractInstance(web3);
-
-        // Get token decimals
-        const decimals = await contract.methods.decimals().call();
-        const amountInSmallestUnit = toTokenUnits(amount, decimals, web3);
-        logger.log("Amount in smallest unit:", amountInSmallestUnit.toString());
-        const humanReadableAmount = fromTokenUnits(amountInSmallestUnit, decimals, web3);
-        logger.log("Human readable amount:", humanReadableAmount);
-        // Build transaction
-        const data = contract.methods.transfer(walletAddress, amountInSmallestUnit.toString()).encodeABI();
-        const nonce = await web3.eth.getTransactionCount(senderAccount.address, 'latest');
-        const gasPrice = await web3.eth.getGasPrice();
-
-        const tx = {
-            from: senderAccount.address,
-            to: smart_contract.contractAddress,
-            data: data,
-            gas: 100000, // Estimate or adjust as needed
-            gasPrice: gasPrice,
-            nonce: nonce,
-            chainId: smart_contract.chainId, // Optional if using RPC that implies network
-        };
-
-        logger.log("Transaction details:", tx);
-
-        // Sign and send
-        const signedTx = await web3.eth.accounts.signTransaction(tx, superAdminWalletPrivateKey);
-        const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-
-        logger.log("Transaction successful with hash:", receipt.transactionHash);
-        return receipt;
-    } catch (error) {
-        logger.error("Error during transaction:", error);
-        throw new Error(error.message || "An error occurred during the USD token transfer");
-    }
-};
 
 
 exports.validateAddress = validateAddress;
@@ -201,7 +233,7 @@ exports.getTransactionDetails = async (hash) => {
 };
 
 exports.FundTransfer = async (req, res) => {
-    const { walletAddress, amount = 21.345 } = req.params;
+    const { walletAddress, amount = 10 } = req.params;
     if (!validateAddress(walletAddress)) {
         return res.json({ error: true, message: "Invalid wallet address" });
     }
