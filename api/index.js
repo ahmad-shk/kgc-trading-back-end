@@ -66,15 +66,15 @@ const setup = async () => {
   }
 };
 
-// // Wrap Express app in handler for Vercel
-// module.exports = async (req, res) => {
-//   await setup();         // Make sure DB is connected before handling
-//   app(req, res);         // Pass request to Express
-// };
+// Wrap Express app in handler for Vercel
+module.exports = async (req, res) => {
+  await setup();         // Make sure DB is connected before handling
+  app(req, res);         // Pass request to Express
+};
 
-// Start the server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, async () => {
-  await setup(); // Ensure DB is connected before starting the server
-  console.log(`Server is running on port ${PORT}`);
-});
+// // Start the server
+// const PORT = process.env.PORT || 5000;
+// app.listen(PORT, async () => {
+//   await setup(); // Ensure DB is connected before starting the server
+//   console.log(`Server is running on port ${PORT}`);
+// });
