@@ -46,13 +46,19 @@ exports.login2 = async (req, res) => {
 // // Create Account
 exports.createAccount = async (req, res) => {
   const { walletAddress } = req.body;
-  if (!validateAddress(walletAddress)) return res.status(401).json({ message: "Invalid Wallet Address" });
-  if (!walletAddress) return res.status(400).json({ message: "Wallet address is required" });
+  // Validate wallet address
+  if (!walletAddress || walletAddress === "")
+    return res.status(400).json({ message: "Wallet address is required" });
+
+  // Validate wallet address format
+  if (!validateAddress(walletAddress))
+    return res.status(401).json({ message: "Invalid Wallet Address" });
 
   // check if wallet address is valid or already exists
-
   const accountExists = await User.findOne({ walletAddress });
   if (accountExists) return res.status(200).json({ message: "Account already exists" });
+  
+  // Create a new user account
   const payload = {
     username: `${walletAddress.slice(0, 7)}...${walletAddress.slice(-5)}`,
     walletAddress,
@@ -64,7 +70,7 @@ exports.createAccount = async (req, res) => {
   try {
     const user = new User(payload);
     await user.save();
-    // res.json({ token });
+    res.status(201).json({ user, message: "Account created successfully" });
   } catch (err) {
     res.status(500).json({ message: "Error creating account" + err });
   }
