@@ -11,11 +11,11 @@ const connectToDatabase = async () => {
       retryWrites: true,
       w: 'majority'
     });
-    console.log("✅ Connected to MongoDB successfully");
+    // console.log("✅ Connected to MongoDB successfully");
     logger.info("✅ Connected to MongoDB successfully");
     return mongoose.connection;
   } catch (error) {
-    console.error("❌ MongoDB connection failed:", error.message);
+    // console.error("❌ MongoDB connection failed:", error.message);
     logger.error("❌ MongoDB connection failed:", error.message);
     throw error;
   }
