@@ -20,37 +20,17 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Error logging in" + err });
   }
 }
-exports.login2 = async (req, res) => {
-  res.json({
-    access_token: 'token',
-    // user: { username: user.username, walletAddress: user.walletAddress },
-    token_type: "bearer", message: "Login successful"
-  });
-  const { walletAddress } = req.body;
-  if (!validateAddress(walletAddress)) return res.status(401).json({ message: "Invalid Wallet Address" });
-  if (!walletAddress) return res.status(400).json({ message: "Wallet address is required" });
-  try {
-    const user = await User.findOne({ walletAddress });
-    if (!user) return res.status(404).json({ message: "User not found" });
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-    res.json({
-      access_token: token,
-      user: { username: user.username, walletAddress: user.walletAddress },
-      token_type: "bearer", message: "Login successful"
-    });
-  } catch (err) {
-    res.status(500).json({ message: "Error logging in" + err });
-  }
-}
 
-// // Create Account
+// Create Account
 exports.createAccount = async (req, res) => {
   const { walletAddress } = req.body;
+  // validate wallet address
+  if (!walletAddress || walletAddress === "") return res.status(400).json({ message: "Wallet address is required" });
+
+  // validate wallet address format
   if (!validateAddress(walletAddress)) return res.status(401).json({ message: "Invalid Wallet Address" });
-  if (!walletAddress) return res.status(400).json({ message: "Wallet address is required" });
 
   // check if wallet address is valid or already exists
-
   const accountExists = await User.findOne({ walletAddress });
   if (accountExists) return res.status(200).json({ message: "Account already exists" });
   const payload = {
@@ -64,7 +44,7 @@ exports.createAccount = async (req, res) => {
   try {
     const user = new User(payload);
     await user.save();
-    // res.json({ token });
+    res.status(201).json({ user, message: "Account created successfully" });
   } catch (err) {
     res.status(500).json({ message: "Error creating account" + err });
   }
