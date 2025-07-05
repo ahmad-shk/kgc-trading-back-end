@@ -4,16 +4,21 @@ const { superAdminWalletAddress } = require("../config");
 // create a pool
 exports.createPool = async (req, res) => {
     const { symbol, pool_type, leverage } = req.body;
-    const start_timestamps = Date.now();
-    const process_timestamps = start_timestamps + 1 * 5 * 60 * 1000; // 1 hour later
-    const end_timestamps = start_timestamps + 1 * 10 * 60 * 1000; // 24 hours later
-    const unit = 'USDT';
-    const total_amount = 0;
-    const status = "OPEN";
     const { walletAddress: createdBy } = req.user;
+
     if (createdBy != superAdminWalletAddress) {
         return res.status(403).json({ message: "You do not have permission to create a pool" });
     }
+
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getMinutes() % 5, 0, 0); // Round down to nearest 5 min and zero seconds/milliseconds
+    const start_timestamps = now.getTime();
+    const process_timestamps = start_timestamps + 1 * 5 * 60 * 1000; // 5 minutes later
+    const end_timestamps = start_timestamps + 1 * 10 * 60 * 1000; // 5 minutes later
+    const unit = 'USDT';
+    const total_amount = 0;
+    const status = "OPEN";
+
     try {
         const pool = new Pool({
             orders: [], symbol, total_amount, unit, pool_type, start_timestamps,
@@ -116,7 +121,7 @@ exports.getAllPools = async (req, res) => {
                 }
             }
         ]);
-        if (!pools || pools.length === 0) return res.status(200).json({ pools:[] });
+        if (!pools || pools.length === 0) return res.status(200).json({ pools: [] });
         // Return only the necessary fields
         res.status(200).json({ pools });
     } catch (err) {

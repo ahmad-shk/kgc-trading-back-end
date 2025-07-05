@@ -16,8 +16,10 @@ const poolProcessing = async () => {
             logger.info("No open pools found.");
             return;
         }
+        // console.log(`Found ${pools.length} open pools.`);
+        logger.info(`Found ${pools.length} open pools.`);
         for (const pool of pools) {
-            const { _id: poolId, orders, symbol, end_timestamps, process_timestamps } = pool;
+            const { _id: poolId, orders, symbol,end_timestamps, process_timestamps } = pool;
             const currentTime = Date.now();
 
             if (orders.length === 0) {
@@ -28,6 +30,8 @@ const poolProcessing = async () => {
                 // console.log(`Pool ${poolId} has been closed due to no orders.`);
                 continue;
             }
+            // console.log(`Processing pool ${poolId}...`);
+            logger.info(`Processing pool ${JSON.stringify(pool)}...${currentTime}`);
             if (currentTime >= process_timestamps && currentTime <= end_timestamps) {
                 // console.log(`Processing pool ${poolId}...`);
                 logger.info(`Processing pool ${poolId}...`)
@@ -73,7 +77,8 @@ const poolProcessing = async () => {
                         createdBy: superAdminWalletAddress,
                     });
                     await processingPool.save();
-                } else if (orderslist.length > 1) {
+                } else 
+                if (orderslist.length > 1) {
                     // console.log(`Processing pool count ${orderslist.length} for pool ${poolId}...`);
                     logger.info(`Processing pool count ${orderslist.length} for pool ${poolId}...`)
                     let ordersList = orderslist
@@ -165,6 +170,9 @@ const poolResultsProcessing = async () => {
             return;
         }
 
+        logger.info(`Found ${pools.length} processing pools.`);
+
+        logger.info(`Processing pools: ${JSON.stringify(pools)}`);
         for (const pool of pools) {
             const processingPool = await PoolProcessing.find({ pool_id: pool._id });
             if (processingPool.length === 0) {
@@ -345,6 +353,8 @@ const poolResultsProcessing = async () => {
                         }
             }
             // Update the pool status to CLOSED
+            // console.log(`Pool ${pool_id} has been processed and closed.`);
+            logger.info(`Pool ${pool_id} has been processed and closed.`);
             await Pool.findByIdAndUpdate(pool_id, { status: "CLOSED" });
         }
     } catch (err) {
@@ -353,7 +363,7 @@ const poolResultsProcessing = async () => {
 };
 
 const job = schedule.scheduleJob(' */5 * * * *', async (fireDate) => {
-    console.log('This job was supposed to run at ' + fireDate + ', but actually ran at ' + new Date());
+    // console.log('This job was supposed to run at ' + fireDate + ', but actually ran at ' + new Date());
     logger.info(`This job was supposed to run at ${fireDate}, but actually ran at ${new Date()}`);
     // Here you can call your processing function or any other logic you want to execute every 5 minutes
     // poolResultsProcessing()
@@ -363,12 +373,12 @@ const job = schedule.scheduleJob(' */5 * * * *', async (fireDate) => {
     // poolProcessing()
     //     .then(() => console.log("All open pools processed successfully."))
     //     .catch(err => logger.error("Error processing open pools: ", err));
-
-    poolResultsProcessing().then(async () => {
-        logger.info("All processing pools results processed successfully.");
-        await poolProcessing();
-    }).catch(err => logger.error("Error processing pool results: ", err));
-    logger.info("All processing pools results processed successfully.");
+    logger.info(`Starting processing-pools results...{${Date.now()}}`);
+    await poolResultsProcessing()
+    logger.info("All processing-pools results processed successfully.");
+    logger.info(`Starting pool-processing  ...{${Date.now()}}`);
+    await poolProcessing();
+    logger.info("All  pool-processing processed successfully.");
     // Process open pools
 });
 

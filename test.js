@@ -25,4 +25,15 @@ orders.sort((a, b) => {
     }
     return a.leverage - b.leverage; // Sort by leverage
 });
-console.log("Sorted Orders: ", orders);
+// console.log("Sorted Orders: ", orders);
+
+const timestamps = Date.now();
+const now = new Date();
+now.setMinutes(now.getMinutes() - now.getMinutes() % 5, 0, 0); // Round down to nearest 5 min and zero seconds/milliseconds
+const start_timestamps = now.getTime();
+const process_timestamps = start_timestamps + 1 * 5 * 60 * 1000; // 5 minutes later
+const end_timestamps = start_timestamps + 1 * 10 * 60 * 1000; // 5 minutes later
+
+console.log("Start Timestamps: ", start_timestamps, new Date(start_timestamps).toLocaleString());
+console.log("Process Timestamps: ", process_timestamps, new Date(process_timestamps).toLocaleString());
+console.log("End Timestamps: ", end_timestamps, new Date(end_timestamps).toLocaleString());
