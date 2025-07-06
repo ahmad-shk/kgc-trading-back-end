@@ -3,11 +3,11 @@ const mongoose = require("mongoose");
 const PoolResultsSchema = new mongoose.Schema({
     pool_id: { type: String, required: true },
     pool_porcessing_id: { type: String, required: true },
-    order_id: { type: String, required: true },
+    order_id: { type: String, required: true,unique: true },
     symbol: { type: String, required: true },
     user_id: { type: String, required: true },
     walletAddress: { type: String, required: true },
-    transactionHash: { type: String, unique: true },
+    transactionHash: { type: String, unique: true, unique: true },
     amount: { type: Number, required: true },
     calimable_amount: { type: Number, required: true },
     profit_loss: { type: Number, required: true },

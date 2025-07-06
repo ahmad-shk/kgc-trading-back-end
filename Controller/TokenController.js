@@ -3,9 +3,6 @@ const Web3 = require("web3");
 const numeral = require("numeral");
 numeral.locale("en");
 const { logger } = require("../logger");
-// const { eventEmitter } = require("../configLoader");
-// const { CONSTANTS } = require("../constants");
-
 const contractABI = require("../contractABI/TokenContractABI.json");
 const { RPC_URL, TOKEN_CONTRACT_ADDRESS: contractAddress, superAdminWalletPrivateKey } = require("../config");
 
@@ -18,15 +15,6 @@ const smart_contract = {
     contractABI: contractABI,
     chainId: 97
 }
-
-// eventEmitter.on("configLoaded", () => {
-//     if (CONSTANTS.CONSTANTS.length > 0) {
-//         smart_contract = CONSTANTS.CONSTANTS.find(contract => contract.contractName ===smart_contract.contractName);
-//         console.log(smart_contract.contractName, smart_contract.contractAddress);
-//     }
-//     // Start your server or perform further initialization here
-// });
-
 
 logger.info(smart_contract.rpc_url)
 
@@ -44,7 +32,6 @@ const getContractInstance = (web3) => {
     }
     return new web3.eth.Contract(smart_contract.contractABI, smart_contract.contractAddress);
 };
-
 
 // Validate transaction hash
 const validateTransactionHash = (hash) => {
@@ -106,9 +93,9 @@ const fundTransfer = async (walletAddress, amount) => {
         const decimals = await contract.methods.decimals().call();
         // const decimals = 6; 
         const amountInSmallestUnit = toTokenUnits(amount, decimals, web3);
-        logger.log("Amount in smallest unit:", amountInSmallestUnit.toString());
+        logger.info(`Amount in smallest unit:${amountInSmallestUnit.toString()}`);
         const humanReadableAmount = fromTokenUnits(amountInSmallestUnit, decimals, web3);
-        logger.log("Human readable amount:", humanReadableAmount);
+        logger.info(`Human readable amount:${humanReadableAmount}`);
         // Build transaction
         const data = contract.methods.transfer(walletAddress, amountInSmallestUnit.toString()).encodeABI();
         const nonce = await web3.eth.getTransactionCount(senderAccount.address, 'latest');
@@ -124,13 +111,13 @@ const fundTransfer = async (walletAddress, amount) => {
             chainId: smart_contract.chainId, // Optional if using RPC that implies network
         };
 
-        logger.log("Transaction details:", tx);
+        logger.info(`Transaction details:${tx}`);
 
         // Sign and send
         const signedTx = await web3.eth.accounts.signTransaction(tx, superAdminWalletPrivateKey);
         const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-        logger.log("Transaction successful with hash:", receipt.transactionHash);
+        logger.info(`Transaction successful with hash:${receipt.transactionHash}`);
         return receipt;
     } catch (error) {
         logger.error("Error during transaction:", error);
